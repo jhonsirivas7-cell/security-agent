@@ -1,13 +1,13 @@
-﻿from flask import Flask, request, jsonify, render_template_string, session, redirect
-import datetime
+²from flask import Flask, request, jsonify, render_template_string, session, redirect
+import datetime, bcrypt
 
 app = Flask(__name__)
 app.secret_key = "shieldops_secret_2024"
 
 USUARIOS = {
-    "admin":    {"password": "281496", "nombre": "Administrador", "rol": "admin"},
-    "melliso": {"password": "JBL2020", "nombre": "luis",   "rol": "cliente"},
-    "Jhoan": {"password": "segu456","nombre": "juan",   "rol": "cliente"},
+    "admin":   {"password": "$2b$12$F5BH6YdQtEivXkLUxJNVn.0AjFs8lzDVm0fKW8tQLPEtFnZKZsxSC", "nombre": "Administrador", "rol": "admin"},
+    "melliso": {"password": "$2b$12$CSlws47wM3ouW/t3HOXbme8hpj63pC3g.zxJqCPLU1zLs1ANu/DtG", "nombre": "luis",          "rol": "cliente"},
+    "Jhoan":   {"password": "$2b$12$4L7djVIYK2/8dCYyGMTGBudWpxKGn3ATUYlV/E/aR7QiQtOj8WAOW", "nombre": "juan",          "rol": "cliente"},
 }
 
 ALERTAS    = []
@@ -47,7 +47,7 @@ button:hover{background:#0ea5e9}
     <label>Usuario</label>
     <input type="text" name="usuario" placeholder="tu_usuario" required autofocus>
     <label>Contrasena</label>
-    <input type="password" name="password" placeholder="••••••••" required>
+    <input type="password" name="password" placeholder="        " required>
     <button type="submit">INGRESAR</button>
   </form>
   <div class="divider"></div>
@@ -203,7 +203,7 @@ body{font-family:'JetBrains Mono',monospace;background:#080c10;color:#e2e8f0;min
       </div>
       <div>
         <div class="alert-title">{{ a.titulo }}</div>
-        <div class="alert-desc">{{ a.descripcion }} — {{ a.hostname }}</div>
+        <div class="alert-desc">{{ a.descripcion }}   {{ a.hostname }}</div>
       </div>
       <div class="alert-time">{{ a.timestamp }}</div>
     </div>
@@ -226,7 +226,7 @@ def login():
     if request.method == "POST":
         usuario  = request.form.get("usuario","")
         password = request.form.get("password","")
-        if usuario in USUARIOS and USUARIOS[usuario]["password"] == password:
+        if usuario in USUARIOS and bcrypt.checkpw(password.encode(), USUARIOS[usuario]["password"].encode()):
             session["usuario"] = usuario
             session["nombre"]  = USUARIOS[usuario]["nombre"]
             return redirect("/panel")
