@@ -5,7 +5,7 @@ app = Flask(__name__)
 app.secret_key = "shieldops_secret_2024"
 
 USUARIOS = {
-    "admin":   {"password": "$2b$12$F5BH6YdQtEivXkLUxJNVn.0AjFs8lzDVm0fKW8tQLPEtFnZKZsxSC", "nombre": "Administrador", "rol": "admin"},
+    "admin":   {"password": "$2b$12$TuFX74lDRZkUSNyl3Hi.SOHcxYg4/cPuo0Pghi0991SBgIlfU0/La", "nombre": "Administrador", "rol": "admin"},
     "melliso": {"password": "$2b$12$CSlws47wM3ouW/t3HOXbme8hpj63pC3g.zxJqCPLU1zLs1ANu/DtG", "nombre": "luis",          "rol": "cliente"},
     "Jhoan":   {"password": "$2b$12$4L7djVIYK2/8dCYyGMTGBudWpxKGn3ATUYlV/E/aR7QiQtOj8WAOW", "nombre": "juan",          "rol": "cliente"},
 }
