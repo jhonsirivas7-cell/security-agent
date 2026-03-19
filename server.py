@@ -1,9 +1,61 @@
-﻿from flask import Flask, request, jsonify, render_template_string
+﻿from flask import Flask, request, jsonify, render_template_string, session, redirect
 import datetime
 
 app = Flask(__name__)
-ALERTAS = []
+app.secret_key = "shieldops_secret_2024"
+
+USUARIOS = {
+    "admin":    {"password": "281496", "nombre": "Administrador", "rol": "admin"},
+    "melliso": {"password": "JBL2020", "nombre": "luis",   "rol": "cliente"},
+    "Jhoan": {"password": "segu456","nombre": "juan",   "rol": "cliente"},
+}
+
+ALERTAS    = []
 HEARTBEATS = {}
+
+LOGIN_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ShieldOps - Login</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'JetBrains Mono',monospace;background:#080c10;color:#e2e8f0;min-height:100vh;display:flex;justify-content:center;align-items:center}
+.box{background:#0d1117;border:1px solid #1e2d3d;border-radius:16px;padding:40px;width:360px}
+.logo{font-family:'Syne',sans-serif;font-size:22px;color:#38bdf8;letter-spacing:3px;text-align:center;margin-bottom:6px}
+.logo-dot{display:inline-block;width:8px;height:8px;background:#38bdf8;border-radius:50%;margin-right:8px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(56,189,248,0.4)}50%{box-shadow:0 0 0 6px rgba(56,189,248,0)}}
+.sub{text-align:center;font-size:11px;color:#334155;margin-bottom:32px;letter-spacing:1px}
+label{font-size:10px;color:#64748b;letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px}
+input{width:100%;background:#080c10;border:1px solid #1e2d3d;color:#e2e8f0;padding:12px;border-radius:8px;margin-bottom:20px;font-family:'JetBrains Mono',monospace;font-size:13px}
+input:focus{outline:none;border-color:#38bdf8}
+button{width:100%;background:#38bdf8;color:#080c10;border:none;padding:13px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:'JetBrains Mono',monospace;letter-spacing:1px}
+button:hover{background:#0ea5e9}
+.error{background:#1c0909;border:1px solid #7f1d1d;color:#f87171;font-size:11px;padding:10px;border-radius:6px;margin-bottom:16px;text-align:center}
+.divider{border-top:1px solid #1e2d3d;margin:24px 0}
+.hint{font-size:10px;color:#334155;text-align:center}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo"><span class="logo-dot"></span>SHIELDOPS</div>
+  <div class="sub">PANEL DE CIBERSEGURIDAD</div>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="POST" action="/login">
+    <label>Usuario</label>
+    <input type="text" name="usuario" placeholder="tu_usuario" required autofocus>
+    <label>Contrasena</label>
+    <input type="password" name="password" placeholder="••••••••" required>
+    <button type="submit">INGRESAR</button>
+  </form>
+  <div class="divider"></div>
+  <div class="hint">Acceso restringido. Solo personal autorizado.</div>
+</div>
+</body>
+</html>
+"""
 
 PANEL_HTML = """
 <!DOCTYPE html>
@@ -20,6 +72,10 @@ body{font-family:'JetBrains Mono',monospace;background:#080c10;color:#e2e8f0;min
 .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:#38bdf8;letter-spacing:2px;display:flex;align-items:center;gap:10px}
 .logo-dot{width:8px;height:8px;background:#38bdf8;border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(56,189,248,0.4)}50%{opacity:0.7;box-shadow:0 0 0 6px rgba(56,189,248,0)}}
+.topright{display:flex;align-items:center;gap:16px}
+.user-pill{background:#131c27;border:1px solid #1e2d3d;color:#94a3b8;font-size:11px;padding:5px 12px;border-radius:6px}
+.logout{background:transparent;border:1px solid #7f1d1d;color:#f87171;font-size:11px;padding:5px 12px;border-radius:6px;text-decoration:none;cursor:pointer}
+.logout:hover{background:#1c0909}
 .status-pill{background:#0f2a1a;border:1px solid #166534;color:#4ade80;font-size:11px;padding:4px 12px;border-radius:20px;display:flex;align-items:center;gap:6px}
 .status-dot{width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse2 1.5s infinite}
 @keyframes pulse2{0%,100%{opacity:1}50%{opacity:0.3}}
@@ -53,7 +109,7 @@ body{font-family:'JetBrains Mono',monospace;background:#080c10;color:#e2e8f0;min
 .bar-row{margin-bottom:12px}
 .bar-label{display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;margin-bottom:4px}
 .bar-track{background:#1e2d3d;border-radius:4px;height:6px;overflow:hidden}
-.bar-fill{height:100%;border-radius:4px;transition:width 1s}
+.bar-fill{height:100%;border-radius:4px}
 .alert-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #1e2d3d}
 .alert-row:last-child{border-bottom:none}
 .alert-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px}
@@ -71,9 +127,10 @@ body{font-family:'JetBrains Mono',monospace;background:#080c10;color:#e2e8f0;min
 <body>
 <div class="topbar">
   <div class="logo"><div class="logo-dot"></div>SHIELDOPS</div>
-  <div style="display:flex;align-items:center;gap:16px">
-    <span style="font-size:11px;color:#334155">{{ fecha }}</span>
-    <div class="status-pill"><div class="status-dot"></div>SISTEMA ACTIVO</div>
+  <div class="topright">
+    <div class="user-pill">{{ nombre }}</div>
+    <div class="status-pill"><div class="status-dot"></div>ACTIVO</div>
+    <a href="/logout" class="logout">SALIR</a>
   </div>
 </div>
 <div class="content">
@@ -120,25 +177,21 @@ body{font-family:'JetBrains Mono',monospace;background:#080c10;color:#e2e8f0;min
         </div>
       </div>
       {% endfor %}
-      {% if not heartbeats %}
-      <div class="empty">Sin clientes conectados</div>
-      {% endif %}
+      {% if not heartbeats %}<div class="empty">Sin clientes conectados</div>{% endif %}
     </div>
     <div class="card">
       <div class="card-title">Uso del sistema</div>
       {% for id, info in heartbeats.items() %}
       <div class="bar-row">
-        <div class="bar-label"><span>CPU — {{ id }}</span><span style="color:#38bdf8">{{ info.cpu }}%</span></div>
+        <div class="bar-label"><span>CPU</span><span style="color:#38bdf8">{{ info.cpu }}%</span></div>
         <div class="bar-track"><div class="bar-fill" style="background:#38bdf8;width:{{ info.cpu }}%"></div></div>
       </div>
       <div class="bar-row">
-        <div class="bar-label"><span>RAM — {{ id }}</span><span style="color:#a78bfa">{{ info.ram }}%</span></div>
+        <div class="bar-label"><span>RAM</span><span style="color:#a78bfa">{{ info.ram }}%</span></div>
         <div class="bar-track"><div class="bar-fill" style="background:#a78bfa;width:{{ info.ram }}%"></div></div>
       </div>
       {% endfor %}
-      {% if not heartbeats %}
-      <div class="empty">Sin datos de sistema</div>
-      {% endif %}
+      {% if not heartbeats %}<div class="empty">Sin datos</div>{% endif %}
     </div>
   </div>
   <div class="card">
@@ -155,9 +208,7 @@ body{font-family:'JetBrains Mono',monospace;background:#080c10;color:#e2e8f0;min
       <div class="alert-time">{{ a.timestamp }}</div>
     </div>
     {% endfor %}
-    {% if not alertas %}
-    <div class="empty">Sin alertas. Todo tranquilo.</div>
-    {% endif %}
+    {% if not alertas %}<div class="empty">Sin alertas. Todo tranquilo.</div>{% endif %}
   </div>
 </div>
 </body>
@@ -165,8 +216,33 @@ body{font-family:'JetBrains Mono',monospace;background:#080c10;color:#e2e8f0;min
 """
 
 @app.route("/")
+def index():
+    if "usuario" not in session:
+        return redirect("/login")
+    return redirect("/panel")
+
+@app.route("/login", methods=["GET","POST"])
+def login():
+    if request.method == "POST":
+        usuario  = request.form.get("usuario","")
+        password = request.form.get("password","")
+        if usuario in USUARIOS and USUARIOS[usuario]["password"] == password:
+            session["usuario"] = usuario
+            session["nombre"]  = USUARIOS[usuario]["nombre"]
+            return redirect("/panel")
+        return render_template_string(LOGIN_HTML, error="Usuario o contrasena incorrectos")
+    return render_template_string(LOGIN_HTML, error=None)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
+@app.route("/panel")
 def panel():
-    criticas    = len([a for a in ALERTAS if a.get("nivel") == "critico"])
+    if "usuario" not in session:
+        return redirect("/login")
+    criticas     = len([a for a in ALERTAS if a.get("nivel") == "critico"])
     advertencias = len([a for a in ALERTAS if a.get("nivel") == "advertencia"])
     return render_template_string(PANEL_HTML,
         alertas=list(reversed(ALERTAS[-20:])),
@@ -175,6 +251,7 @@ def panel():
         advertencias=advertencias,
         clientes=len(HEARTBEATS),
         heartbeats=HEARTBEATS,
+        nombre=session.get("nombre",""),
         fecha=datetime.datetime.now().strftime("%d/%m/%Y %H:%M"))
 
 @app.route("/api/alertas", methods=["POST"])
@@ -202,7 +279,7 @@ def heartbeat():
 
 if __name__ == "__main__":
     print("="*50)
-    print("  SHIELDOPS SERVIDOR v1.0")
+    print("  SHIELDOPS SERVIDOR v2.0")
     print("  Panel en: http://localhost:5000")
     print("="*50)
     app.run(host="0.0.0.0", port=5000, debug=False)
