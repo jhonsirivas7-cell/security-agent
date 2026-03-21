@@ -1,6 +1,6 @@
 ﻿import os, sys, subprocess, socket, platform, urllib.request, datetime
 
-PANEL_URL  = "http://TU-SERVIDOR.com/api/alertas"
+PANEL_URL  = "https://security-agent-zhzi.onrender.com"
 VERSION    = "1.0"
 
 def log(msg):

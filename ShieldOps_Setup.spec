@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['security_agent.py'],
+    ['installer.py'],
     pathex=[],
     binaries=[],
     datas=[],
