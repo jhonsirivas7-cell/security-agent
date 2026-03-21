@@ -245,12 +245,12 @@ def panel():
     criticas     = len([a for a in ALERTAS if a.get("nivel") == "critico"])
     advertencias = len([a for a in ALERTAS if a.get("nivel") == "advertencia"])
     return render_template_string(PANEL_HTML,
-        alertas=list(reversed(ALERTAS[-20:])),
+       alertas=[a for a in reversed(ALERTAS[-20:]) if session.get("usuario") == "admin" or a.get("cliente_id","").startswith(session.get("usuario",""))],
         total=len(ALERTAS),
         criticas=criticas,
         advertencias=advertencias,
         clientes=len(HEARTBEATS),
-        heartbeats=HEARTBEATS,
+       heartbeats={k:v for k,v in HEARTBEATS.items() if session.get("usuario") == "admin" or k.startswith(session.get("usuario",""))},
         nombre=session.get("nombre",""),
         fecha=datetime.datetime.now().strftime("%d/%m/%Y %H:%M"))
 
