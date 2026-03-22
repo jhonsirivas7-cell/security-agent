@@ -18,7 +18,7 @@ import uuid, json, os
 ADMIN_API_KEY = "shieldops-admin-2024-secreto"
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
-app = FastAPI(title="ShieldOps Central Server")
+app = FastAPI(title="ShieldOps Central Server", docs_url=None, redoc_url=None, openapi_url=None)
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
