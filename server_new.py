@@ -6,8 +6,26 @@ from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timedelta
 import uuid, json, os
 
+from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi.security.api_key import APIKeyHeader
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import create_engine, Column, String, Boolean, DateTime, JSON
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from datetime import datetime, timedelta
+import uuid, json, os
+
+ADMIN_API_KEY = "shieldops-admin-2024-secreto"
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
 app = FastAPI(title="ShieldOps Central Server")
 
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+def verificar_admin(api_key: str = Security(api_key_header)):
+    if api_key != ADMIN_API_KEY:
+        raise HTTPException(status_code=403, detail="Acceso no autorizado")
+    return api_key
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 DATABASE_URL = "sqlite:///./shieldops.db"
@@ -46,7 +64,7 @@ def root():
     return {"status": "ShieldOps Central Server v2.0", "online": True}
 
 @app.post("/api/licencias/crear")
-def crear_licencia(datos: dict, db: Session = Depends(get_db)):
+def crear_licencia(datos: dict, db: Session = Depends(get_db), _: str = Depends(verificar_admin)):
     plan = datos.get("plan", "basico")
     modulos = {
         "basico":     {"clamav": True,  "yara": False, "virustotal": False, "reparacion": False},
@@ -100,7 +118,7 @@ def verificar_licencia(datos: dict, db: Session = Depends(get_db)):
     }
 
 @app.get("/api/licencias/listar")
-def listar_licencias(db: Session = Depends(get_db)):
+def listar_licencias(db: Session = Depends(get_db), _: str = Depends(verificar_admin)):
     licencias = db.query(Licencia).all()
     return [{
         "id": l.id,
@@ -114,7 +132,7 @@ def listar_licencias(db: Session = Depends(get_db)):
     } for l in licencias]
 
 @app.post("/api/licencias/generar-fichero")
-def generar_fichero(datos: dict, db: Session = Depends(get_db)):
+def generar_fichero(datos: dict, db: Session = Depends(get_db), _: str = Depends(verificar_admin)):
     key      = datos.get("license_key")
     tipo     = datos.get("tipo", "registro")
     licencia = db.query(Licencia).filter(Licencia.license_key == key).first()
