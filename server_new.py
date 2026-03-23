@@ -337,14 +337,17 @@ function showSection(s){
   ['dashboard','licencias','clientes','escaneos','actividad'].forEach(function(x){
     document.getElementById('sec-'+x).style.display = x===s ? 'block' : 'none';
   });
-  document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
-  event.target.closest('.nav-item').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(el){
+    el.classList.remove('active');
+    if(el.getAttribute('onclick') && el.getAttribute('onclick').includes("'"+s+"'")){
+      el.classList.add('active');
+    }
+  });
   if(s==='licencias') cargarLicencias();
   if(s==='escaneos') cargarEscaneos();
   if(s==='actividad') cargarActividad();
   if(s==='clientes') cargarClientesDetalle();
 }
-
 function logout(){localStorage.removeItem('token');window.location.href='/admin';}
 
 function crearLicencia(){
